@@ -310,7 +310,11 @@ function vDash(){
   const dw=v=>v==null?'N/A':(last.tw-v>0?'+':'')+f(last.tw-v,2)+' '+S.setup.unit;
   const l7d=ser.slice(-7);
   const complete=Object.keys(S.days).filter(d=>dayScore(d)>=.8).length;
+  const gLo=(cut?sc.rocLo:S.setup.startWeight*.0025)/start*100, gHi=(cut?sc.rocHi:S.setup.startWeight*.005)/start*100, rp=last.pct==null?null:last.pct*100;
+  const mag=rp==null?null:(cut?-rp:rp); let rs=['Waiting for data','pill'];
+  if(mag!=null)rs=mag<0?['Moving the wrong way','pill bad']:mag<gLo*.9?['Slower than guide','pill warn']:mag>gHi*1.15?['Faster than guide','pill warn']:['On track','pill good'];
   $('#view').innerHTML=`
+  <div class="card"><h2>📈 Rate of Change (ROC)</h2><div class="row" style="align-items:center"><div><div class="big">${rp==null?'N/A':(rp>0?'+':'')+rp.toFixed(2)+'%'}<span class="small mute"> /week</span></div><div class="small mute">${last.dlt==null?'Needs 8+ days of weigh-ins':(last.dlt>0?'+':'')+f(last.dlt,2)+' '+S.setup.unit+' vs 7 days ago (trend weight)'}</div></div><div style="text-align:right"><span class="${rs[1]}">${rs[0]}</span><div class="small mute" style="margin-top:6px">Guide: ${cut?'−':'+'}${f(gLo,2)}% to ${cut?'−':'+'}${f(gHi,2)}% per week</div></div></div></div>
   <div class="card"><div class="grid">
    <div class="stat"><div class="l">Trend weight</div><div class="v">${f(last.tw,2)} ${S.setup.unit}</div></div>
    <div class="stat"><div class="l">Total change</div><div class="v">${(last.tw-start>0?'+':'')+f(last.tw-start,2)}</div></div>
