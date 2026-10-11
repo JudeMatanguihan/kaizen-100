@@ -102,7 +102,7 @@ function setupCalc(){
   const bf=(-44.988+.503*s.age+10.689*F+3.172*bmi-.026*bmi*bmi+.181*bmi*F-.02*bmi*s.age-.005*bmi*bmi*F+.00021*bmi*bmi*s.age)*.01;
   const lean=wLb-wLb*bf;
   return{bmr,tdee,cutLo,cutHi,bulkLo,bulkHi,bmi,bf,protLo:Math.round(lean),protHi:Math.round(lean*1.3),
-    rocLo:W*(male?.0075:.006),rocHi:W*(male?.0115:.01),male,lbs}}
+    rocLo:W*.005,rocHi:W*.01,bulkLo:W*.0005,bulkHi:W*.0015,male,lbs}}
 function dayN(date){return Math.round((parse(date)-parse(S.setup.startDate))/864e5)+1}
 function dateOfDay(n){return addDays(S.setup.startDate,n-1)}
 function weekOf(n){return Math.min(15,Math.ceil(n/7))}
@@ -135,7 +135,7 @@ function dayScore(date){
   const items=[[d.sleep!=null,1],[num(d.weight)!=null,1],[d.water,1],[(d.plan||'').trim()!=='',1],
     ...S.habits.map((h,i)=>[!!(d.habits||[])[i],/optional/i.test(h)?0:1]),
     [d.stress!=null,1],[d.fatigue!=null,1],[d.hunger!=null,1],[(d.wins||'').trim()!=='',1],[(d.improve||'').trim()!=='',1],
-    [!!d.goals,1],[!!d.planned,1],[!!d.tracker,1]];
+    [!!d.planned,1],[!!d.tracker,1]];
   if(photo)items.push([!!d.measured,1],[!!d.photos,1],[!!d.loggedM,1],[!!d.uploaded,1]);
   const max=items.reduce((p,c)=>p+c[1],0), got=items.reduce((p,c)=>p+(c[0]?c[1]:0),0);return max?got/max:0}
 function weekStats(w){
@@ -192,9 +192,10 @@ function coachFor(date){
   for(const k in THEMES){const [re,msg]=THEMES[k];if(re.test(txt)&&msg)tips.push(msg)}
   if(!THEMES.win[0].test(d.wins||'')&&!winLines.length)tips.push('Add at least one win, even a small one: "I logged my food" counts.');
   if(me.pct!=null&&d.weight!=null){
-    const ok=cut?(me.dlt<=0&&-me.dlt>=sc.rocLo*.9&&-me.dlt<=sc.rocHi*1.15):me.dlt>=0;
+    const ok=cut?(me.dlt<=0&&-me.dlt>=sc.rocLo*.9&&-me.dlt<=sc.rocHi*1.15):(me.dlt>=sc.bulkLo&&me.dlt<=sc.bulkHi*1.3);
     if(cut&&me.dlt>0.1)obs.push(`Trend weight is up ${f(me.dlt,2)} ${S.setup.unit} vs last week. Do not react to one weigh-in; adjust only if the trend holds for the full week.`);
     else if(cut&&-me.dlt>sc.rocHi*1.2)obs.push(`You are losing ${f(-me.dlt,2)} ${S.setup.unit}/week, faster than the ${f(sc.rocHi,2)} guide. Eat a bit more to protect muscle and energy.`);
+    else if(!cut&&me.dlt>sc.bulkHi*1.3)obs.push(`You are gaining ${f(me.dlt,2)} ${S.setup.unit}/week, above the ~0.1% lean-bulk guide. Trim calories slightly so more of it is muscle.`);
     else if(ok)praise.push(`Your trend rate (${f(me.dlt,2)} ${S.setup.unit}/wk) is in a healthy range.`)}
   if((d.improve||'').trim().split(/\s+/).filter(Boolean).length<4)tips.push('Make "do better tomorrow" concrete: what, when, and where (e.g. "walk 20 min at 6 pm after dinner").');
   if(!praise.length)praise.push('You showed up and logged. Consistency beats intensity over 100 days.');
@@ -286,7 +287,7 @@ function vToday(){
    <label>🙌 Wins today (3–5, fitness or life)</label><textarea id="f_wins">${esc(d.wins)}</textarea>
    <label>🤔 Do better tomorrow (2–3 commitments)</label><textarea id="f_improve">${esc(d.improve)}</textarea>
    <label>🚧 Obstacles / frustrations today (optional)</label><textarea id="f_obstacles">${esc(d.obstacles)}</textarea>
-   ${chk('goals','🎯 Reviewed my goals and vision',d.goals)}${chk('planned','✍️ Planned tomorrow (workout, walk, meals)',d.planned)}${chk('tracker','☑️ Filled in the tracker in full',d.tracker)}
+   ${chk('planned','✍️ Planned tomorrow (workout, walk, meals)',d.planned)}${chk('tracker','☑️ Filled in the tracker in full',d.tracker)}
    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button id="getCoach">🧠 Get my assessment</button>${S.apiKey?'<button class="ghost" id="getClaude">✨ Ask Claude</button>':''}</div>
    <div id="coachOut" style="margin-top:10px">${d.coach?coachHTML(d.coach):''}${d.claude?`<div class="card" style="background:var(--soft)"><b>✨ Claude</b><div style="white-space:pre-wrap;margin-top:6px">${esc(d.claude)}</div></div>`:''}</div></div>`;
   const setDay=(k,v)=>{(S.days[date]=S.days[date]||{})[k]=v;save()};
@@ -310,11 +311,12 @@ function vDash(){
   const dw=v=>v==null?'N/A':(last.tw-v>0?'+':'')+f(last.tw-v,2)+' '+S.setup.unit;
   const l7d=ser.slice(-7);
   const complete=Object.keys(S.days).filter(d=>dayScore(d)>=.8).length;
-  const gLo=(cut?sc.rocLo:S.setup.startWeight*.0025)/start*100, gHi=(cut?sc.rocHi:S.setup.startWeight*.005)/start*100, rp=last.pct==null?null:last.pct*100;
+  const gLo=cut?.5:.05, gHi=cut?1:.15, rp=last.pct==null?null:last.pct*100;
   const mag=rp==null?null:(cut?-rp:rp); let rs=['Waiting for data','pill'];
   if(mag!=null)rs=mag<0?['Moving the wrong way','pill bad']:mag<gLo*.9?['Slower than guide','pill warn']:mag>gHi*1.15?['Faster than guide','pill warn']:['On track','pill good'];
   $('#view').innerHTML=`
-  <div class="card"><h2>📈 Rate of Change (ROC)</h2><div class="row" style="align-items:center"><div><div class="big">${rp==null?'N/A':(rp>0?'+':'')+rp.toFixed(2)+'%'}<span class="small mute"> /week</span></div><div class="small mute">${last.dlt==null?'Needs 8+ days of weigh-ins':(last.dlt>0?'+':'')+f(last.dlt,2)+' '+S.setup.unit+' vs 7 days ago (trend weight)'}</div></div><div style="text-align:right"><span class="${rs[1]}">${rs[0]}</span><div class="small mute" style="margin-top:6px">Guide: ${cut?'−':'+'}${f(gLo,2)}% to ${cut?'−':'+'}${f(gHi,2)}% per week</div></div></div></div>
+  <div class="card"><h2>📈 Rate of Change (ROC)</h2><div class="row" style="align-items:center"><div><div class="big">${rp==null?'N/A':(rp>0?'+':'')+rp.toFixed(2)+'%'}<span class="small mute"> /week</span></div><div class="small mute">${last.dlt==null?'Needs 8+ days of weigh-ins':(last.dlt>0?'+':'')+f(last.dlt,2)+' '+S.setup.unit+' vs 7 days ago (trend weight)'}</div></div><div style="text-align:right"><span class="${rs[1]}">${rs[0]}</span><div class="small mute" style="margin-top:6px">Guide: ${cut?'−0.5% to −1%':'about +0.1%'} per week</div></div></div>
+   <p class="small mute" style="margin:10px 0 0">${cut?'<b>Cutting:</b> aim to lose 0.5–1% of your trend weight each week. Slower than 0.5%: trim ~100–150 kcal or add steps. Faster than 1%: eat a little more to protect muscle.':'<b>Bulking:</b> aim to gain only about 0.1% of your trend weight per week (a lean bulk). Gaining faster than ~0.15% is mostly fat: lower calories a little. Under 0.05%: add ~100 kcal.'}</p></div>
   <div class="card"><div class="grid">
    <div class="stat"><div class="l">Trend weight</div><div class="v">${f(last.tw,2)} ${S.setup.unit}</div></div>
    <div class="stat"><div class="l">Total change</div><div class="v">${(last.tw-start>0?'+':'')+f(last.tw-start,2)}</div></div>
@@ -322,7 +324,7 @@ function vDash(){
    <div class="stat"><div class="l">Est. TDEE</div><div class="v">${fi(last.tdee??sc.tdee)}</div></div></div>
    <h3>Goal progress → ${tgt} ${S.setup.unit}</h3><div class="bar"><i style="width:${pct*100}%"></i></div><p class="small mute">${(pct*100).toFixed(0)}% · ${f(Math.max(0,dist-done),2)} ${S.setup.unit} to go</p></div>
   <div class="card"><h2>Weight journey</h2>${lineChart(ser)}</div>
-  <div class="card"><h2>Weight change (trend)</h2><div class="grid"><div class="stat"><div class="l">7 days</div><div class="v">${dw(l7)}</div></div><div class="stat"><div class="l">14 days</div><div class="v">${dw(l14)}</div></div><div class="stat"><div class="l">21 days</div><div class="v">${dw(l21)}</div></div><div class="stat"><div class="l">Rate vs guide</div><div class="v small">${last.dlt==null?'N/A':f(last.dlt,2)+'/wk'}<br><span class="mute">guide ${f(cut?-sc.rocHi:sc.rocLo/2,2)} to ${f(cut?-sc.rocLo:sc.rocHi/2,2)}</span></div></div></div></div>
+  <div class="card"><h2>Weight change (trend)</h2><div class="grid"><div class="stat"><div class="l">7 days</div><div class="v">${dw(l7)}</div></div><div class="stat"><div class="l">14 days</div><div class="v">${dw(l14)}</div></div><div class="stat"><div class="l">21 days</div><div class="v">${dw(l21)}</div></div><div class="stat"><div class="l">Rate vs guide</div><div class="v small">${last.dlt==null?'N/A':f(last.dlt,2)+'/wk'}<br><span class="mute">guide ${cut?f(-sc.rocHi,2)+' to '+f(-sc.rocLo,2):'+'+f(sc.bulkLo,2)+' to +'+f(sc.bulkHi,2)}</span></div></div></div></div>
   <div class="card"><h2>Last 7 days</h2><div class="grid">
    <div><div class="small mute">Calories · avg ${fi(avg(l7d.map(x=>x.c)))} ${ws.t.cal==null?'(baseline, no target)':'(target '+fi(ws.t.cal)+')'}</div>${bars(l7d.map(x=>x.c),(ws.t.cal||2500)*1.3,'var(--accent2)',ws.t.cal)}</div>
    <div><div class="small mute">Steps · avg ${fi(avg(l7d.map(x=>num((S.days[x.date]||{}).steps))))} (target ${fi(ws.t.steps)})</div>${bars(l7d.map(x=>num((S.days[x.date]||{}).steps)),ws.t.steps*1.3,'var(--accent)',ws.t.steps)}</div>
