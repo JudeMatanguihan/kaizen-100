@@ -255,7 +255,8 @@ function render(){
   $('#nav').innerHTML=TABS.map(([k,i,l])=>`<button class="${S.tab===k?'on':''}" data-t="${k}"><span class="ic">${i}</span>${l}</button>`).join('');
   $('#nav').onclick=e=>{const b=e.target.closest('button');if(b){S.tab=b.dataset.t;save();render()}};
   const n=dayN(iso(new Date())); $('#hdrDay').textContent=n<1?'starts '+S.setup.startDate:n>DAYS?'complete':`Day ${n}/${DAYS}`;
-  if(!ready()&&S.tab!=='setup')S.tab='setup';({today:vToday,dash:vDash,week:vWeek,coach:vCoach,setup:vSetup}[S.tab])();window.scrollTo(0,0)}
+  if(!ready()&&S.tab!=='setup'){const t=TABS.find(x=>x[0]===S.tab);$('#view').innerHTML=`<div class="card" style="text-align:center;padding:28px 16px"><div class="big">🔒</div><h2 style="margin-top:8px">${t[2]} is locked</h2><p class="mute">Finish Setup first (start date, age, height, starting weight and target goal) and this tab unlocks.</p><button id="goSetup">Go to Setup</button></div>`;$('#goSetup').onclick=()=>{S.tab='setup';save();render()};window.scrollTo(0,0);return}
+  ({today:vToday,dash:vDash,week:vWeek,coach:vCoach,setup:vSetup}[S.tab])();window.scrollTo(0,0)}
 function field(id,label,type,val,extra=''){return`<div><label for="${id}">${label}</label><input id="${id}" type="${type}" value="${esc(val??'')}" ${extra}></div>`}
 function scaleHTML(key,val,lowIsGood){return`<div class="scale" data-key="${key}">${[1,2,3,4,5].map(i=>`<button class="${val===i?'on':''}" data-v="${i}">${i}</button>`).join('')}</div>`}
 function chk(key,label,val,locked){return`<label class="chk"><input type="checkbox" data-k="${key}" ${val?'checked':''}><span>${label}</span></label>`}
