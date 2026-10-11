@@ -84,8 +84,8 @@ const fi=v=>v==null?'—':Math.round(v).toLocaleString();
 
 let S=load();
 function defaults(){return{setup:{unit:'kg',gender:'Male',age:null,startWeight:null,ft:null,inch:null,activity:"Lightly Active (5000 to 7499 steps/day)",sessions:"3-6 sessions",minGoal:null,targetGoal:null,dreamGoal:null,mode:'Cut',startDate:iso(new Date())},
- habits:['Read','Journal','Habit 3 (optional)','Habit 4 (optional)','Habit 5 (optional)'],days:{},weeks:{},apiKey:'',tab:'today',cur:iso(new Date()),wk:1}}
-function load(){try{const j=JSON.parse(localStorage.getItem(KEY));if(j){const d=defaults();return{...d,...j,setup:{...d.setup,...j.setup}}}}catch(e){}return defaults()}
+ habits:['Habit 1 (optional)','Habit 2 (optional)','Habit 3 (optional)','Habit 4 (optional)','Habit 5 (optional)'],days:{},weeks:{},apiKey:'',tab:'today',cur:iso(new Date()),wk:1}}
+function load(){try{const j=JSON.parse(localStorage.getItem(KEY));if(j){const d=defaults();const r={...d,...j,setup:{...d.setup,...j.setup}};if(r.habits[0]==='Read')r.habits[0]=d.habits[0];if(r.habits[1]==='Journal')r.habits[1]=d.habits[1];return r}}catch(e){}return defaults()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 
 /* ---------- core calculations (ported from the sheet) ---------- */
